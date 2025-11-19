@@ -1,29 +1,3 @@
-"""
-GitHub push quick commands — run from repo root (c:\Users\Adam\wco_baseball)
-
-# Configure git (if not already configured)
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
-
-# Initialize repo (if needed)
-git init
-git add .
-git commit -m "Initial commit"
-
-# Option A — create and push with gh CLI (recommended)
-gh auth login
-gh repo create your-username/your-repo-name --public --source=. --remote=origin --push
-
-# Option B — create repo on github.com then push manually
-git branch -M main
-git remote add origin https://github.com/your-username/your-repo-name.git
-git push -u origin main
-
-# Notes:
-# - Do not commit secrets (.env). Use GitHub Secrets for SUPABASE_URL and SUPABASE_KEY.
-# - Replace your-username/your-repo-name and 'main' as needed.
-"""
-
 import os
 from typing import Any, Dict, Optional, List, Tuple, Union
 from supabase import create_client, Client
