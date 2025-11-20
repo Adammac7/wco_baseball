@@ -2,6 +2,7 @@ import dotenv
 import uvicorn
 
 from src.routes.out_pipeline import router as out_pipeline_router
+from src.routes.in_pipeline import router as in_pipeline_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(out_pipeline_router)
+app.include_router(in_pipeline_router)
 
 
 @app.get("/")

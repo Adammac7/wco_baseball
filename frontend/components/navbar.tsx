@@ -62,7 +62,7 @@ export function Navbar() {
     {/* underline */}
     <span
       className={`
-        absolute left-0 -bottom-1 h-[2px] bg-red-500 transition-all duration-300
+        absolute left-0 -bottom-1 h-0.5 bg-red-500 transition-all duration-300
         ${pathname === href ? "w-full" : "w-0 group-hover:w-full"}
       `}
     />

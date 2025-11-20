@@ -8,8 +8,10 @@ COLUMNS: List[str] = [
     "Date",
     "GameUID",
     "Pitcher",
+    "PitcherId",
     "PitcherThrows",
     "Batter",
+    "BatterId",
     "BatterSide",
     "BatterTeam",
     "Inning",
@@ -61,7 +63,7 @@ COLUMNS: List[str] = [
 
 # Which columns should be integers vs floats
 INT_FIELDS = {
-    "Inning","Outs","Balls","Strikes","OutsOnPlay","RunScored"
+    "Inning","Outs","Balls","Strikes","OutsOnPlay","RunScored","PitcherId","BatterId"
 }
 
 FLOAT_FIELDS = {
