@@ -51,7 +51,15 @@ async def in_pipeline():
     
 
     #=============================== claculate stats by querying, output json =========================#
+                                    print("Calculating hitter stats...")
+                                    from src.services.supabase_client import supabase
+                                    from src.services.hitter_stats_calc import HitterStatsCalculator
 
+                                    calculator = HitterStatsCalculator(supabase)  # use default client inside the class
+                                    print("Calculating and saving stats for player 1000118742...")
+
+
+                                    calculator.compute_and_save_for_player(player_id="1000118742", season=2025)
 
     #=============================== send josn to frontend ============================================#
 
