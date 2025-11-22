@@ -26,9 +26,6 @@ class Supa_uploader:
     def chunk_array(self, arr):
         return [arr[i:i + self.chunk_size] for i in range(0, len(arr), self.chunk_size)]
 
-    def transform_row(self, row: dict) -> dict:
-        # Optional row transformation
-        return row
     
 
     def build_players_from_pitches(pitch_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -74,7 +71,7 @@ class Supa_uploader:
                 print("No data to import.")
                 return
 
-            rows = [self.transform_row(r) for r in all_rows]
+            rows = [r for r in all_rows]
             chunks = self.chunk_array(rows)
 
             inserted = 0
