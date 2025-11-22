@@ -65,6 +65,11 @@ COLUMNS: List[str] = [
 INT_FIELDS = {
     "Inning","Outs","Balls","Strikes","OutsOnPlay","RunScored","PitcherId","BatterId"
 }
+NON_NULL = {
+     "RelSpeed","VertRelAngle","SpinRate","SpinAxis","RelHeight","RelSide","Extension",
+    "InducedVertBreak","HorzBreak","VertApprAngle","Angle"
+    "HorzApprAngle","ExitSpeed","Inning","Outs","Balls","Strikes","OutsOnPlay","RunScored"
+}
 
 FLOAT_FIELDS = {
     "RelSpeed","VertRelAngle","SpinRate","SpinAxis","RelHeight","RelSide","Extension",
@@ -111,15 +116,38 @@ def to_text_or_null(v: Any):
 
 def clean_row(row: Dict[str, Any]) -> Dict[str, Any]:
     cleaned: Dict[str, Any] = {}
+
     for col in COLUMNS:
         raw = row.get(col, None)
+
+        # INT fields
         if col in INT_FIELDS:
-            cleaned[col] = to_int_or_null(raw)
-        elif col in FLOAT_FIELDS:
-            cleaned[col] = to_float_or_null(raw)
-        else:
-            cleaned[col] = to_text_or_null(raw)
+            val = to_int_or_null(raw)
+            # Non-nullable logic for integers
+            # if col == "PlateLocSide" and val is None:
+            #     val = -1
+            # if col == "PlateLocHeight" and val is None:
+            #     val = -1
+            if col in NON_NULL and val is None:
+                val = 0
+            cleaned[col] = val
+            continue
+
+        # FLOAT fields
+        if col in FLOAT_FIELDS:
+            val = to_float_or_null(raw)
+            # Non-nullable logic for floats
+            if col in NON_NULL and val is None:
+                val = 0.0
+            cleaned[col] = val
+            continue
+
+        # TEXT fields
+        val = to_text_or_null(raw)
+        cleaned[col] = val
+
     return cleaned
+
 
 def csv_to_json( # works
     csv_file_path: str,
