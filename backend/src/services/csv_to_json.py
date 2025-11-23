@@ -148,6 +148,41 @@ def clean_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
     return cleaned
 
+def add_season(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Adds a 'Season' field to the row dict based on its 'Date'.
+    Input dates expected like '9/12/25' or '9/12/2025'.
+    Spring = Jan–Aug
+    Fall   = Sep–Dec
+    """
+    date_str = data.get("Date")
+
+    if date_str:
+        try:
+            # Split: 9/12/25 → ['9','12','25']
+            parts = date_str.split("/")
+            month = int(parts[0])
+            year_raw = parts[2]
+
+            # Convert YY to YYYY
+            if len(year_raw) == 2:
+                year = int("20" + year_raw)   # 25 -> 2025
+            else:
+                year = int(year_raw)
+
+            # Determine season
+            if 1 <= month <= 8:   # Jan–Aug
+                data["Season"] = f"Spring-{year}"
+            else:                 # Sep–Dec
+                data["Season"] = f"Fall-{year}"
+
+        except Exception:
+            data["Season"] = None
+
+    else:
+        data["Season"] = None
+
+    return data
 
 def csv_to_json( # works
     csv_file_path: str,
@@ -172,9 +207,15 @@ def csv_to_json( # works
         for row in reader:
             # Build a sub-dict and clean it
             subset = {col: row.get(col, None) for col in columns}
-            extracted.append(clean_row(subset))
+            extracted.append(add_season(clean_row(subset)))
 
     return extracted
+
+def save_json(data: json) -> None:
+    
+    os.makedirs("src/data", exist_ok=True)
+    with open("src/data/output.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 if __name__ == "__main__":
     # Example usage

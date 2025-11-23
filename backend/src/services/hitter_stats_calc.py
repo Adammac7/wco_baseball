@@ -142,8 +142,8 @@ class Batter:
             self.plate_appearances += 1
             self.contacts += 1
             self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-            self.avg_exit_velocity += p.exit_velocity
-            self.avg_launch_angle += p.launch_angle
+            self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
+            self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             p.outcome,p.action = self.get_outcome(p)
         elif p.play_result != "Undefined" or p.KorBB != "Undefined":
             self.at_bats += 1
@@ -153,29 +153,29 @@ class Batter:
                 self.total_bases += 1
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity
-                self.avg_launch_angle += p.launch_angle
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "Double":
                 self.hits += 1
                 self.total_bases += 2
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity
-                self.avg_launch_angle += p.launch_angle
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "Triple":
                 self.hits += 1
                 self.total_bases += 3
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity
-                self.avg_launch_angle += p.launch_angle
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "HomeRun":
                 self.hits += 1
                 self.total_bases += 4
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity
-                self.avg_launch_angle += p.launch_angle
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle   # easy fix for missing input data, just add average to
             elif p.KorBB == "Walk":
                 self.walks += 1
                 self.at_bats -= 1
@@ -249,30 +249,30 @@ class Batter:
             
     def filter_pitches(self, data):
         for row in data:
-            if row.get("Batter") == self.name:
-                pitch = Pitch(
-                    batter_name=row['Batter'],
-                    pitcher_name=row['Pitcher'],
-                    outcome="Undefined",
-                    action="Undefined",
-                    tagged_pitch_type=row['TaggedPitchType'],
-                    pitch_call=row['PitchCall'],
-                    rel_speed=row['RelSpeed'],
-                    spin_rate=row['SpinRate'],
-                    IVB=row['InducedVertBreak'],
-                    launch_angle=row['Angle'],
-                    exit_velocity=row['ExitSpeed'],
-                    tagged_result=row['TaggedHitType'],
-                    play_result=row['PlayResult'],
-                    KorBB=row['KorBB'],
-                    plateLocHeight=row['PlateLocHeight'],
-                    plateLocSide=row['PlateLocSide']
-                )
-                try:
-                    self.add_pitch(pitch)   
-                except Exception as e:
-                    print("Error adding pitch for play ", self.get_outcome(pitch), ": ", e)
-                    continue
+            pitch = Pitch(
+                batter_name=row['Batter'],
+                pitcher_name=row['Pitcher'],
+                outcome="Undefined",
+                action="Undefined",
+                tagged_pitch_type=row['TaggedPitchType'],
+                pitch_call=row['PitchCall'],
+                rel_speed=row['RelSpeed'],
+                spin_rate=row['SpinRate'],
+                IVB=row['InducedVertBreak'],
+                launch_angle=row['Angle'],
+                exit_velocity=row['ExitSpeed'],
+                tagged_result=row['TaggedHitType'],
+                play_result=row['PlayResult'],
+                KorBB=row['KorBB'],
+                plateLocHeight=row['PlateLocHeight'],
+                plateLocSide=row['PlateLocSide']
+            )
+            try:
+                self.add_pitch(pitch)   
+            except Exception as e:
+                print("Error adding pitch for play ", self.get_outcome(pitch), ": ", e)
+                continue
+
     def get_stats(self):
         #returns field variables as a dictionary
         data = {
@@ -393,28 +393,35 @@ class HitterStatsCalculator:
 
     # ---------- Public API ----------
 
-    def compute_and_save_for_player(self, player_name: str, season: int) -> None:
+    def compute_and_save_for_player(self, player_id: str, season: str) -> None:
         """
         Fetch pitch_data for this batter + season, compute all stats,
         and upsert one row into hitter_stats.
         """
-        pitch_rows = self._fetch_pitches_for_season(player_name, season)
-        batter  = Batter(player_name, "general")
+        pitch_rows = self._fetch_pitches_for_season(player_id, season)
+        batter_name = pitch_rows[0].get("Batter")
+        batter  = Batter(batter_name, "general")
 
         if not pitch_rows:
-            print(f"No pitch data found for player {player_name} in season {season}")
+            print(f"No pitch data found for player {player_id} in season {season}")
             return
 
-        self._compute_all_stats(batter, season, pitch_rows)
-        self._upsert_hitter_stats(batter)
+        
+        # Create a Pitch object from the first row
+        # Iterate through each row in the DataFrame
+        batter.filter_pitches(pitch_rows)
+        batter.calculate_stats()
+
+        # self._compute_all_stats(batter, season, pitch_rows)
+        self._upsert_hitter_stats(batter.get_stats())
 
     # ---------- Data Fetching ----------
 
 
     def _fetch_pitches_for_season(
         self,
-        player_name: str,
-        season: int,
+        playerID: str,
+        season: str,
     ) -> List[Dict[str, Any]]:
         """
         Fetch all pitch_data rows for this batter and season.
@@ -427,7 +434,8 @@ class HitterStatsCalculator:
             self.supabase
             .table("pitch_data")
             .select("*")
-            .eq("Batter", player_name)
+            .eq("BatterId", playerID)
+            .eq("Season", season)
             # .gte("Date", f"{season}-01-01")
             # .lte("Date", f"{season}-12-31")
             .execute()
@@ -597,20 +605,22 @@ def rebuild_all_hitter_stats_for_season(season: int) -> None:
 
     calculator.compute_and_save_for_player(player_id, season)
 
-print("Running main function...")
+if __name__ == "__main__":
+    # Example usage:
+    print("Running main function...")
 
-from pathlib import Path
-d = Path(__file__).resolve().parents[1] / "data" / "output.json"
-with d.open("r", encoding = "utf-8") as f:
-    data = json.load(f)
+    from pathlib import Path
+    d = Path(__file__).resolve().parents[1] / "data" / "output.json"
+    with d.open("r", encoding = "utf-8") as f:
+        data = json.load(f)
 
-Battername = "Jackson, Jake"  # edit player name here, this sets the filter of who we are looking for
+    Battername = "Justice, Zach"  # edit player name here, this sets the filter of who we are looking for
 
-print(type(data))
-player = Batter(Battername, "gerneral") # general is for basic analysis, recomend changing general to a different role to distinguish filter paramters
 
-# Create a Pitch object from the first row
-# Iterate through each row in the DataFrame
-player.filter_pitches(data)
-player.calculate_stats()
-print(player.get_stats())
+    player = Batter(Battername, "gerneral") # general is for basic analysis, recomend changing general to a different role to distinguish filter paramters
+
+    # Create a Pitch object from the first row
+    # Iterate through each row in the DataFrame
+    player.filter_pitches(data)
+    player.calculate_stats()
+    print(player.get_stats())
