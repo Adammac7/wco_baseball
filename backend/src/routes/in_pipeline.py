@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+# to optimize calculuating player stats, switch from list to dict to store the stats per zone box
 
 @router.post("/in_pipeline")
 async def in_pipeline():
@@ -88,13 +89,15 @@ async def in_pipeline():
                                     from src.services.hitter_stats_calc import HitterStatsCalculator
 
                                     calculator = HitterStatsCalculator(supabase)  # use default client inside the class
-                                    print("Calculating and saving stats for player 1000118742...")
+                                    print("Calculating and saving stats for player 6691ce9aee74abbe...")
+                                    player_id="6691ce9aee74abbe"
 
+                                        
                                                                                                     # change to str, update func accordingly
-                                    calculator.compute_and_save_for_player(player_id="6691ce9aee74abbe", season="Fall-2025")
+                                    calculator.compute_and_save_for_player(player_id, season="Fall-2025")
                                              # ====next task==== #
                                             
-                                    # need to upate the hitters_table to match to batter.get_stats() output
+                                    # need to update the hitters_table to match to batter.get_stats() output
                                     # need to finish the get hitters function to get all the hitters to add to the stats table and
                                     # loop this compute_and_save_for_player function for each hitter returned from get_hitters
                                     print("Hitter stats calculation completed.")

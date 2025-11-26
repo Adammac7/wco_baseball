@@ -7,30 +7,109 @@ import json
 class Batter:
     """
     A class representing a baseball player with their pitches and stats.
+    name TEXT NOT NULL,
+
+    plate_appearance INTEGER,
+    at_bat INTEGER,
+    hits INTEGER,
+    doubles INTEGER,
+    triples INTEGER,
+    home_runs INTEGER,
+    strikeouts INTEGER,
+    walks INTEGER,
+    total_bases INTEGER,
+
+    avg NUMERIC,
+    obp NUMERIC,
+    slg NUMERIC,
+    ops NUMERIC,
+
+    k_percent NUMERIC,
+    bb_percent NUMERIC,
+    bbe INTEGER,
+
+    avg_exit_velocity NUMERIC,
+    ev_90th NUMERIC,
+    ev_max NUMERIC,
+
+    hhla NUMERIC,
+    hh_percent NUMERIC,
+    brl_percent NUMERIC,
+
+    gb_percent NUMERIC,
+    ld_percent NUMERIC,
+    fb_percent NUMERIC,
+    pu_percent NUMERIC,
+
+    pitches_seen INTEGER,
+    swing_percent NUMERIC,    
+    whiff_percent NUMERIC,
+    chase_percent NUMERIC,
+    iz_swing_percent NUMERIC,
+    iz_miss_percent NUMERIC,
+    fp_swing_percent NUMERIC,
+
+    bwar NUMERIC,
+    fwar NUMERIC,
+    ops_plus NUMERIC,
+    wrc_plus NUMERIC,
+    wobp NUMERIC,
     """
     def __init__(self, name, role):
         self.name = name
         self.role = role
         self.pitches = []  # Array to store pitch objects
         self.pitchers_faced = []
-        self.at_bats= 0
+
+        # basic average stats
         self.avg= 0.0
         self.obp= 0.0
         self.slg= 0.0
         self.ops= 0.0
-        self.wobp= 0.0
         self.k_rate= 0.0
         self.bb_rate= 0.0
+        self.avg_exit_velocity = 0.0
+        self.avg_launch_angle = 0.0
+        self.max_exit_velocity = 0.0
 
+        # counting stats
+        self.pitches_seen = 0  # addeded 
+        self.whiffs= 0.0  # added
+        self.swings= 0.0 # added
+        self.at_bats= 0
         self.hits= 0.0
+        self.doubles= 0.0
+        self.triples= 0.0
+        self.home_runs= 0.0
         self.walks= 0.0
         self.strikeouts= 0.0
         self.total_bases= 0.0
         self.plate_appearances= 0.0
-        self.avg_exit_velocity = 0.0
-        self.avg_launch_angle = 0.0
-        self.max_exit_velocity = 0.0
         self.contacts = 0
+ 
+        # uncalculated so far
+        self.whiff_rate = 0.0
+        self.swing_rate = 0.0
+        self.chase_rate = 0.0
+        self.hard_hit_rate = 0.0
+        self.ground_ball_rate = 0.0
+        self.line_drive_rate = 0.0
+        self.fly_ball_rate = 0.0
+        self.popup_rate = 0.0
+        self.barell_percent = 0.0
+        self.hard_hit_rate = 0.0
+        self.inzone_swing_rate = 0.0
+        self.inzone_miss_rate = 0.0
+        self.foul_percent = 0.0 # might not be the correct stat
+        self.hard_hit_launch_angle = 0.0 # don't know how to calculate
+
+        #advanced stats, not yet calculated
+        self.wrc_plus = 0.0
+        self.ops_plus = 0.0
+        self.bwar = 0.0
+        self.fwar = 0.0
+        self.wobp= 0.0
+
 
        # 4x4 grid of plate zones, z1 = avg, z2 = slg, z3 = avg exit velocity
         self.plate_zones_avg = {
@@ -133,6 +212,8 @@ class Batter:
 
     
     def add_pitch(self, p):
+        # worried this logic may be wrong !!! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ important +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.pitches_seen += 1
         self.pitches.append(p)
         self.pitchers_faced.append(p.pitcher_name)
         # add logic for batter stats vs a pitcher
@@ -145,11 +226,13 @@ class Batter:
             self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
             self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             p.outcome,p.action = self.get_outcome(p)
+            
         elif p.play_result != "Undefined" or p.KorBB != "Undefined":
             self.at_bats += 1
             self.plate_appearances += 1
             if p.play_result == "Single":
                 self.hits += 1
+                self.swings += 1
                 self.total_bases += 1
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
@@ -157,6 +240,8 @@ class Batter:
                 self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "Double":
                 self.hits += 1
+                self.swings += 1
+                self.doubles += 1
                 self.total_bases += 2
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
@@ -164,6 +249,8 @@ class Batter:
                 self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "Triple":
                 self.hits += 1
+                self.swings += 1
+                self.triples += 1
                 self.total_bases += 3
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
@@ -171,6 +258,8 @@ class Batter:
                 self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
             elif p.play_result == "HomeRun":
                 self.hits += 1
+                self.swings += 1
+                self.home_runs += 1
                 self.total_bases += 4
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
@@ -181,10 +270,21 @@ class Batter:
                 self.at_bats -= 1
             elif p.KorBB == "Strikeout":
                 self.strikeouts += 1
+        
+            
         else:
-            # print("Error entering batter stats during add pitch")
+            # print("Error entering batter stats during add pitch")  might not not do anything
             pass
+
+        #logic for wiff and swing rates for general batter stats
         p.outcome,p.action = self.get_outcome(p)
+        if p.outcome == "Whiff" or p.outcome == "Strikeout Swing":
+            self.whiffs += 1
+            self.swings += 1
+        if p.outcome == "Foul ball":
+            self.swings += 1
+
+        #logic for the plate zone stats, (switch to dict for optimization)
         if p.plateLocSide != None and p.plateLocHeight != None:
             p.zone = get_zone_number(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high)
         else:
@@ -276,24 +376,62 @@ class Batter:
     def get_stats(self):
         #returns field variables as a dictionary
         data = {
-            'name': self.name,
-            'role': self.role,
-            'hits': self.hits,
-            'walks': self.walks,
-            'strikeouts': self.strikeouts,
-            'total bases': self.total_bases,
-            'plate appearences': self.plate_appearances,
-            'avg': self.avg,
-            'obp': self.obp,
-            'slg': self.slg,
-            'ops': self.ops,
-            'wobp': self.wobp,
-            'k_rate': self.k_rate,
-            'bb_rate': self.bb_rate,
-            'avg_exit_velocity': self.avg_exit_velocity,
-            'avg_launch_angle': self.avg_launch_angle,
-            'max_exit_velocity': self.max_exit_velocity,    
-            'plate_zone_stats': self.plate_zone_stats,
+             # Identity
+                'name': self.name,
+                'role': self.role,
+
+                # Basic counting stats
+                'pitches_seen': self.pitches_seen,
+                'swings': self.swings,
+                'whiffs': self.whiffs,
+                'contacts': self.contacts,
+                'at_bats': self.at_bats,
+                'plate_appearances': self.plate_appearances,
+                'hits': self.hits,
+                'doubles': self.doubles,
+                'triples': self.triples,
+                'home_runs': self.home_runs,
+                'walks': self.walks,
+                'strikeouts': self.strikeouts,
+                'total_bases': self.total_bases,
+
+                # Traditional slash-line stats
+                'avg': self.avg,
+                'obp': self.obp,
+                'slg': self.slg,
+                'ops': self.ops,
+                'wobp': self.wobp,
+
+                # Advanced rate stats
+                'k_rate': self.k_rate,
+                'bb_rate': self.bb_rate,
+                'whiff_rate': self.whiff_rate,
+                'swing_rate': self.swing_rate,
+                'inzone_swing_rate': self.inzone_swing_rate,
+                'inzone_miss_rate': self.inzone_miss_rate,
+                'chase_rate': self.chase_rate,
+                'hard_hit_rate': self.hard_hit_rate,
+                'ground_ball_rate': self.ground_ball_rate,
+                'line_drive_rate': self.line_drive_rate,
+                'fly_ball_rate': self.fly_ball_rate,
+                'popup_rate': self.popup_rate,
+                'foul_percent': self.foul_percent,
+                'barrel_percent': self.barell_percent,
+                'hard_hit_launch_angle': self.hard_hit_launch_angle,
+
+                # Batted-ball measurements
+                'avg_exit_velocity': self.avg_exit_velocity,
+                'avg_launch_angle': self.avg_launch_angle,
+                'max_exit_velocity': self.max_exit_velocity,
+
+                # Advanced sabermetrics (future)
+                'wrc_plus': self.wrc_plus,
+                'ops_plus': self.ops_plus,
+                'bwar': self.bwar,
+                'fwar': self.fwar,
+
+                # Zone-based stats (nested dict)
+                'plate_zone_stats': self.plate_zone_stats,
         }
         return data
                 
@@ -306,6 +444,22 @@ class Batter:
         self.wobp = (self.a * self.walks + self.b * self.hits + self.c * self.hits + self.d * self.hits + self.e * self.hits) / self.at_bats  if self.at_bats > 0 else 0.0
         self.k_rate = self.strikeouts / self.at_bats if self.at_bats > 0 else 0.0
         self.bb_rate = self.walks / self.plate_appearances if self.plate_appearances > 0 else 0.0
+        self.swing_rate = self.swings / self.pitches_seen if self.pitches_seen > 0 else 0.0
+        self.whiff_rate = self.whiffs / self.swings if self.swings > 0 else 0.0
+
+        self.inzone_swing_rate = 0.0  # to be implemented
+        self.inzone_miss_rate = 0.0   # to be implemented
+        self.chase_rate = 0.0         # to be implemented
+        self.hard_hit_rate = 0.0      # to be implemented
+        self.ground_ball_rate = 0.0   # to be implemented
+        self.line_drive_rate = 0.0    # to be implemented
+        self.fly_ball_rate = 0.0      # to be implemented
+        self.popup_rate = 0.0         # to be implemented
+        self.barell_percent = 0.0     # to be implemented
+        self.foul_percent = 0.0       # to be implemented
+        self.hard_hit_launch_angle = 0.0 # to be implemented
+
+
 
         self.avg_exit_velocity = self.avg_exit_velocity / self.contacts if self.contacts > 0 else 0.0
         self.avg_launch_angle = self.avg_launch_angle / self.contacts if self.contacts > 0 else 0.0
@@ -411,9 +565,12 @@ class HitterStatsCalculator:
         # Iterate through each row in the DataFrame
         batter.filter_pitches(pitch_rows)
         batter.calculate_stats()
+        stats = batter.get_stats()
+        for k, v in stats.items():
+            print(f"{k}: {v}")
 
         # self._compute_all_stats(batter, season, pitch_rows)
-        self._upsert_hitter_stats(batter.get_stats())
+        # self._upsert_hitter_stats(batter.get_stats())
 
     # ---------- Data Fetching ----------
 
@@ -608,19 +765,6 @@ def rebuild_all_hitter_stats_for_season(season: int) -> None:
 if __name__ == "__main__":
     # Example usage:
     print("Running main function...")
-
-    from pathlib import Path
-    d = Path(__file__).resolve().parents[1] / "data" / "output.json"
-    with d.open("r", encoding = "utf-8") as f:
-        data = json.load(f)
-
-    Battername = "Justice, Zach"  # edit player name here, this sets the filter of who we are looking for
-
-
-    player = Batter(Battername, "gerneral") # general is for basic analysis, recomend changing general to a different role to distinguish filter paramters
-
-    # Create a Pitch object from the first row
-    # Iterate through each row in the DataFrame
-    player.filter_pitches(data)
-    player.calculate_stats()
-    print(player.get_stats())
+    from supabase_client import supabase
+    calculator = HitterStatsCalculator(supabase)
+    calculator.compute_and_save_for_player(player_id="6691ce9aee74abbe", season="Fall-2025")
