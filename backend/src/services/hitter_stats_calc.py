@@ -76,21 +76,39 @@ class Batter:
         self.pitches_seen = 0  # addeded 
         self.whiffs= 0.0  # added
         self.swings= 0.0 # added
+
+        self.plate_appearances= 0.0
         self.at_bats= 0
         self.hits= 0.0
         self.doubles= 0.0
         self.triples= 0.0
         self.home_runs= 0.0
         self.walks= 0.0
+        self.hdp = 0.0
         self.strikeouts= 0.0
         self.total_bases= 0.0
-        self.plate_appearances= 0.0
         self.contacts = 0
+        # in zone / out of zone stats
+        self.in_zone_misses = 0
+        self.in_zone_swings = 0 # contacts = swings - whiffs
+        self.in_zone_pitches = 0
+        self.chase_swings = 0
+        self.chase_misses = 0
+        self.out_of_zone_pitches = 0
+
+        self.ground_balls = 0
+        self.line_drives = 0
+        self.fly_balls = 0
+        self.popups = 0
+        self.foul_balls = 0
+        self.bunts = 0
+
  
         # uncalculated so far
         self.whiff_rate = 0.0
         self.swing_rate = 0.0
         self.chase_rate = 0.0
+        self.chase_whiff_rate = 0.0
         self.hard_hit_rate = 0.0
         self.ground_ball_rate = 0.0
         self.line_drive_rate = 0.0
@@ -184,11 +202,12 @@ class Batter:
                     return "Undefined", True
         elif pitch.KorBB == "Strikeout":
             if pitch.pitch_call == "StrikeSwinging":
-                return "Strikeout Swing", True
+                return "Strikeout Swinging", True
             elif pitch.pitch_call == "StrikeCalled":
                 return "Strikeout Looking", True
             else:
-                return "Strikeout", True
+                print("pitch call ", pitch.pitch_call, " for strikeout is not accounted for")
+                return "Undefined", True    
         elif pitch.KorBB == "Walk":
             return "Walk", True
         elif pitch.pitch_call == "StrikeSwinging":
@@ -218,45 +237,75 @@ class Batter:
         self.pitchers_faced.append(p.pitcher_name)
         # add logic for batter stats vs a pitcher
         # if something happens count as an at bat
-        if p.play_result == "Out":
-            self.at_bats += 1
+        # did something happen on the pitch
+        p.outcome,p.action = self.get_outcome(p)
+        if p.action:  # if action is true, it means the pitch resulted in an outcome that affects batter stats
             self.plate_appearances += 1
-            self.contacts += 1
-            self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-            self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
-            self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
-            p.outcome,p.action = self.get_outcome(p)
-            
-        elif p.play_result != "Undefined" or p.KorBB != "Undefined":
-            self.at_bats += 1
-            self.plate_appearances += 1
-            if p.play_result == "Single":
+            is_ab = p.outcome not in {"Whiff","Walk", "Hit by Pitch", "Sac Fly", "Sac Bunt", "Called Strike", "Ball", "Intentional Ball", "Ball in Dirt", "Foul ball"}
+            if is_ab:
+                self.at_bats += 1
+            if p.outcome == "Out":
+                self.swings += 1
+                self.contacts += 1
+                self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity / self.contacts
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle / self.contacts
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+                
+            elif p.outcome == "Single":
                 self.hits += 1
                 self.swings += 1
                 self.total_bases += 1
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
-                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
-            elif p.play_result == "Double":
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity / self.contacts
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle / self.contacts
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Double":
                 self.hits += 1
                 self.swings += 1
                 self.doubles += 1
                 self.total_bases += 2
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
-                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
-            elif p.play_result == "Triple":
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity / self.contacts
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle / self.contacts
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Triple":
                 self.hits += 1
                 self.swings += 1
                 self.triples += 1
                 self.total_bases += 3
                 self.contacts += 1
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
-                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
-                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle
-            elif p.play_result == "HomeRun":
+                self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity / self.contacts
+                self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle / self.contacts
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "HomeRun":
                 self.hits += 1
                 self.swings += 1
                 self.home_runs += 1
@@ -265,25 +314,82 @@ class Batter:
                 self.max_exit_velocity = p.exit_velocity if p.exit_velocity > self.max_exit_velocity else self.max_exit_velocity
                 self.avg_exit_velocity += p.exit_velocity if p.exit_velocity != None else self.avg_exit_velocity
                 self.avg_launch_angle += p.launch_angle if p.launch_angle != None else self.avg_launch_angle   # easy fix for missing input data, just add average to
-            elif p.KorBB == "Walk":
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Walk":
                 self.walks += 1
-                self.at_bats -= 1
-            elif p.KorBB == "Strikeout":
+                self.out_of_zone_pitches += 1
+            elif p.outcome == "Strikeout Swinging":    
                 self.strikeouts += 1
-        
-            
+                self.swings += 1
+                self.whiffs += 1
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Strikeout Looking":
+                self.strikeouts += 1
+                self.in_zone_pitches += 1
+            elif p.outcome == "Sac Fly":
+                self.contacts += 1
+                self.swings += 1
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Sac Bunt":
+                self.bunts += 1
+            elif p.outcome == "Hit by Pitch":
+                self.hdp += 1
+
+            #logic for hit type stats
+
+            if p.tagged_result == "GroundBall":
+                self.ground_balls += 1
+            elif p.tagged_result == "LineDrive":
+                self.line_drives += 1
+            elif p.tagged_result == "FlyBall":
+                self.fly_balls += 1
+            elif p.tagged_result == "Popup":
+                self.popups += 1
         else:
-            # print("Error entering batter stats during add pitch")  might not not do anything
-            pass
+            # logic for pitches that do not result in an at bat
+            if p.outcome == "Whiff":
+                self.swings += 1
+                self.whiffs += 1
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_misses += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+                    self.chase_misses += 1
+            elif p.outcome == "Foul ball":
+                self.foul_balls += 1
+                self.contacts += 1  # fouls count as contacts
+                self.swings += 1  # fouls count as swings
+                if in_zone(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high):
+                    self.in_zone_swings += 1
+                    self.in_zone_pitches += 1
+                else:
+                    self.chase_swings += 1
+            elif p.outcome == "Called Strike":
+                self.in_zone_pitches += 1   
+            elif p.outcome == "Ball" or p.outcome == "Intentional Ball" or p.outcome == "Ball in Dirt":
+                self.out_of_zone_pitches += 1
 
-        #logic for wiff and swing rates for general batter stats
-        p.outcome,p.action = self.get_outcome(p)
-        if p.outcome == "Whiff" or p.outcome == "Strikeout Swing":
-            self.whiffs += 1
-            self.swings += 1
-        if p.outcome == "Foul ball":
-            self.swings += 1
-
+                    
         #logic for the plate zone stats, (switch to dict for optimization)
         if p.plateLocSide != None and p.plateLocHeight != None:
             p.zone = get_zone_number(p.plateLocSide, p.plateLocHeight,p.zone_width, p.zone_height_low, p.zone_height_high)
@@ -401,6 +507,16 @@ class Batter:
                 'slg': self.slg,
                 'ops': self.ops,
                 'wobp': self.wobp,
+                'hdp': self.hdp,
+
+                'ground_balls': self.ground_balls,
+                'line_drives': self.line_drives,
+                'fly_balls': self.fly_balls,
+                'popups': self.popups,
+                'foul_balls': self.foul_balls,
+                'bunts': self.bunts,
+                
+
 
                 # Advanced rate stats
                 'k_rate': self.k_rate,
@@ -410,6 +526,7 @@ class Batter:
                 'inzone_swing_rate': self.inzone_swing_rate,
                 'inzone_miss_rate': self.inzone_miss_rate,
                 'chase_rate': self.chase_rate,
+                'chase_whiff_rate': self.chase_whiff_rate,
                 'hard_hit_rate': self.hard_hit_rate,
                 'ground_ball_rate': self.ground_ball_rate,
                 'line_drive_rate': self.line_drive_rate,
@@ -447,16 +564,17 @@ class Batter:
         self.swing_rate = self.swings / self.pitches_seen if self.pitches_seen > 0 else 0.0
         self.whiff_rate = self.whiffs / self.swings if self.swings > 0 else 0.0
 
-        self.inzone_swing_rate = 0.0  # to be implemented
-        self.inzone_miss_rate = 0.0   # to be implemented
-        self.chase_rate = 0.0         # to be implemented
+        self.inzone_swing_rate = self.in_zone_swings / self.in_zone_pitches if self.in_zone_pitches > 0 else 0.0
+        self.inzone_miss_rate = self.in_zone_misses / self.in_zone_swings if self.in_zone_swings > 0 else 0.0
+        self.chase_rate = self.chase_swings / self.out_of_zone_pitches if self.out_of_zone_pitches > 0 else 0.0
+        self.chase_whiff_rate = self.chase_misses / self.chase_swings if self.chase_swings > 0 else 0.0
         self.hard_hit_rate = 0.0      # to be implemented
-        self.ground_ball_rate = 0.0   # to be implemented
-        self.line_drive_rate = 0.0    # to be implemented
-        self.fly_ball_rate = 0.0      # to be implemented
-        self.popup_rate = 0.0         # to be implemented
+        self.ground_ball_rate = self.ground_balls / (self.contacts - self.foul_balls) if (self.contacts - self.foul_balls) > 0 else 0.0
+        self.line_drive_rate = self.line_drives / (self.contacts - self.foul_balls) if (self.contacts - self.foul_balls) > 0 else 0.0
+        self.fly_ball_rate = self.fly_balls / (self.contacts - self.foul_balls) if (self.contacts - self.foul_balls) > 0 else 0.0
+        self.popup_rate = self.popups / (self.contacts - self.foul_balls) if (self.contacts - self.foul_balls) > 0 else 0.0
         self.barell_percent = 0.0     # to be implemented
-        self.foul_percent = 0.0       # to be implemented
+        self.foul_percent = self.foul_balls / self.contacts if self.contacts > 0 else 0.0   
         self.hard_hit_launch_angle = 0.0 # to be implemented
 
 
@@ -517,7 +635,17 @@ class Pitch:
     def __repr__(self):
         return f"Pitch({self.batter_name}, {self.pitcher_name},{self.outcome},{self.action},{self.pitch_type}, {self.rel_speed},{self.exit_velocity},{self.launch_angle})"
     
+def in_zone(plateLocSide, plateLocHeight, zone_width, zone_height_low, zone_height_high):
+    try:
+        left = -zone_width / 2
+        right = zone_width / 2
 
+        in_horizontal = left <= plateLocSide <= right
+        in_vertical = zone_height_low <= plateLocHeight <= zone_height_high
+        return in_horizontal and in_vertical
+    except Exception as e:
+        print(f"Error in in_zone function, Bad data: {e}")
+        return False
 
 def get_zone_number(x, y, zone_width, zone_height_low, zone_height_high):
         x_sections = np.linspace(-zone_width/2, zone_width/2, 5)
@@ -767,4 +895,5 @@ if __name__ == "__main__":
     print("Running main function...")
     from supabase_client import supabase
     calculator = HitterStatsCalculator(supabase)
-    calculator.compute_and_save_for_player(player_id="6691ce9aee74abbe", season="Fall-2025")
+    calculator.compute_and_save_for_player(player_id="32cc658426150550", season="Fall-2025")
+    
