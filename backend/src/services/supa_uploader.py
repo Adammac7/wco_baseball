@@ -41,6 +41,7 @@ class Supa_uploader:
                     "team": row.get("BatterTeam"),   # or another source if you prefer
                     "bats": None,
                     "throws": row.get("PitcherThrows"),
+                    "role": "pitcher",
                 }
 
             # Batter
@@ -52,6 +53,7 @@ class Supa_uploader:
                     "team": row.get("BatterTeam"),
                     "bats": row.get("BatterSide"),
                     "throws": None,
+                    "role": "batter",
                 }
 
         return list(players.values())

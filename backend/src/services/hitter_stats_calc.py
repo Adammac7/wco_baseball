@@ -673,6 +673,30 @@ class HitterStatsCalculator:
     def __init__(self, supabase: Client):
         self.supabase = supabase
 
+
+    
+
+    def normalize_hitter_stats_payload(payload: dict) -> dict:
+        INT_FIELDS = [
+        "pitches_seen", "swings", "whiffs", "contacts",
+        "at_bats", "plate_appearances", "hits", "doubles",
+        "triples", "home_runs", "walks", "strikeouts",
+        "total_bases", "hdp", "ground_balls", "line_drives",
+        "fly_balls", "popups", "foul_balls", "bunts",
+    ]
+        # Ensure counting stats are proper integers or None
+        for field in INT_FIELDS:
+            val = payload.get(field)
+            if val is None:
+                continue
+            # some might be "0.0", 0.0, "12", etc.
+            try:
+                payload[field] = int(float(val))
+            except (ValueError, TypeError):
+                # if it's truly garbage, set to None or handle as you like
+                payload[field] = None
+        return payload
+
     # ---------- Public API ----------
 
     def compute_and_save_for_player(self, player_id: str, season: str) -> None:
@@ -681,12 +705,12 @@ class HitterStatsCalculator:
         and upsert one row into hitter_stats.
         """
         pitch_rows = self._fetch_pitches_for_season(player_id, season)
-        batter_name = pitch_rows[0].get("Batter")
-        batter  = Batter(batter_name, "general")
-
-        if not pitch_rows:
+        try:
+            batter_name = pitch_rows[0].get("Batter")
+        except IndexError:
             print(f"No pitch data found for player {player_id} in season {season}")
             return
+        batter  = Batter(batter_name, "general")
 
         
         # Create a Pitch object from the first row
@@ -694,11 +718,14 @@ class HitterStatsCalculator:
         batter.filter_pitches(pitch_rows)
         batter.calculate_stats()
         stats = batter.get_stats()
-        for k, v in stats.items():
-            print(f"{k}: {v}")
+        stats['batter_id'] = player_id
+        stats['season'] = season
+        payload = HitterStatsCalculator.normalize_hitter_stats_payload(stats)
+        # for k, v in stats.items():
+        #     print(f"{k}: {v}")
 
         # self._compute_all_stats(batter, season, pitch_rows)
-        # self._upsert_hitter_stats(batter.get_stats())
+        self._upsert_hitter_stats(payload)
 
     # ---------- Data Fetching ----------
 
@@ -844,7 +871,7 @@ class HitterStatsCalculator:
         res = (
             self.supabase
             .table("hitter_stats")
-            .upsert(stats, on_conflict="player_id,season")
+            .upsert(stats, on_conflict=["batter_id","season"])
             .execute()
         )
         error = getattr(res, "error", None)
